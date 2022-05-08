@@ -2,98 +2,155 @@ import datetime as dt
 
 
 class Record:
+    """Create a record of spending money or calories"""
+
     def __init__(self, amount, comment, date=dt.datetime.now().date()):
+        """
+        Initialize the Record class
+
+        Key arguments:
+        amount -- amount of money or the number of calories (required)
+        comment -- explanation of what the money was spent on or where 
+        the calories came from (required)
+        date -- date the record was created (default today date)
+
+        Restrictions:
+        1. the amount argument must be non-negative
+        2. a future date is possible
+        """
+
         self.amount = amount
         self.comment = comment
-        date_format = '%d.%m.%Y'
-        try:
+
+        if isinstance(date, str):
+            date_format = '%d.%m.%Y'
             date = dt.datetime.strptime(date, date_format).date()
-            self.date = date
-        except:
-            self.date = date
+        
+        self.date = date
 
 
 class Calculator:
+    """Create a parent class for entering the date and counting wastes"""
+
     def __init__(self, limit):
+        """
+        Initialize the Calculator class
+
+        Key arguments:
+        limit -- daily spending limit set by the user(required)
+
+        Restrictions:
+        1. the limit argument must be non-negative
+        """
+        
         self.limit = limit
         self.records = []
 
     def add_record(self, record):
-        temp = []
+        """
+        Add an entry to the class list
 
-        temp.append(record.amount)
-        temp.append(record.comment)
-        temp.append(record.date)
+        Key arguments:
+        record -- a record of spending money or calories(required)
 
-        self.records.append(temp)
+        Restrictions:
+        1. the record argument must be of the Record class
+        """
+
+        self.records.append(record)
 
     def get_today_stats(self):
-        date = dt.datetime.now().date()
-        total = 0
-        for data in self.records:
-            if data[2] == date:
-                total += data[0]
-        return total
+        """Get the sum of all expenses for today"""
+
+        today = dt.datetime.now().date()
+        today_count = 0
+
+        for rec in self.records:
+            if rec.date == today:
+                today_count += rec.amount
+        return today_count
 
     def get_week_stats(self):
-        date = dt.datetime.now().date()
-        total = 0
-        period = dt.timedelta(days=7)
-        delta = date - period
-        for data in self.records:
-            if data[2] > delta:
-                total += data[0]
-        return total
+        """Get the amount of expenses for the last 7 days"""
+
+        today = dt.datetime.now().date()
+        week_count = 0
+        delta = dt.timedelta(days=7)
+        week_ago = today - delta
+
+        for rec in self.records:
+            if week_ago <= rec.date <= today:
+                week_count += rec.amount
+        return week_count
 
 
 class CaloriesCalculator(Calculator):
+    """
+    Сreate a child class to determine the remaining calories
+    
+    Behaviour:
+    All methods of the parent class remain 
+    """
+
     def get_calories_remained(self):
-        total_today = self.get_today_stats()
-        if total_today < self.limit:
+        """Determine whether it is possible to get calories today"""
+
+        today_count = self.get_today_stats()
+        
+        if today_count < self.limit:
+            left_calories = self.limit - today_count
             return (f'Сегодня можно съесть что-нибудь ещё, но с общей '
-                    f'калорийностью не более {self.limit - total_today} кКал')
-        else:
-            return 'Хватит есть!'
+                    f'калорийностью не более {left_calories} кКал')
+        
+        return 'Хватит есть!'
 
 
 class CashCalculator(Calculator):
+    """
+    Сreate a child class to determine how much money is left in a 
+    certain currency today
+    
+    Behaviour:
+    All methods of the parent class remain 
+    """
+
     USD_RATE = 67.38
     EURO_RATE = 71.10
+    RUB_RATE = 1.0
 
     def get_today_cash_remained(self, currency):
-        total_today = self.get_today_stats()
+        """
+        Determine the balance of money for today and make a conclusion
 
-        if currency == 'rub':
-            if total_today == self.limit:
-                return 'Денег нет, держись'
-            elif total_today < self.limit:
-                return f'На сегодня осталось {self.limit - total_today} руб'
-            else:
-                return (f'Денег нет, держись: '
-                        f'твой долг - {total_today - self.limit} руб')
-        elif currency == 'usd':
-            total_today /= self.USD_RATE
-            usd_limit = self.limit / self.USD_RATE
-            
-            if total_today == usd_limit:
-                return 'Денег нет, держись'
-            elif total_today < usd_limit:
-                result_rnd = round(usd_limit - total_today, 2)
-                return f'На сегодня осталось {result_rnd} USD'
-            else:
-                result_rnd = round(total_today - usd_limit, 2)
-                return (f'Денег нет, держись: '
-                        f'твой долг - {result_rnd} USD')
-        elif currency == 'eur':
-            total_today /= self.EURO_RATE
-            euro_limit = self.limit / self.EURO_RATE
-            
-            if total_today == euro_limit:
-                return 'Денег нет, держись'
-            elif total_today < euro_limit:
-                result_rnd = round(euro_limit - total_today, 2)
-                return f'На сегодня осталось {result_rnd} USD'
-            else:
-                result_rnd = round(total_today - euro_limit, 2)
-                return (f'Денег нет, держись: '
-                        f'твой долг - {result_rnd} USD')
+        Key arguments:
+        currency -- the currency in which we will transfer money (required)
+
+        Restrictions:
+        1. the currency argument must be equal to 'rub', 'usd' or 'eur'
+
+        Exceptions:
+        If the currency argument is not passed or an unexpected value 
+        is passed, the program will break
+        """
+
+        today_count = self.get_today_stats()
+        
+        if today_count == self.limit:
+            return 'Денег нет, держись'
+
+        currencies = {
+            'rub': ('руб', self.RUB_RATE),
+            'usd': ('USD', self.USD_RATE),
+            'eur': ('Euro', self.EURO_RATE),
+        }
+
+        currency_name, currency_rate = currencies.get(currency)
+        remained_cash = abs(self.limit - today_count)
+        remained_cash_in_currency = round((remained_cash / currency_rate), 2)
+
+        if today_count < self.limit:
+            return (f'На сегодня осталось '
+                    f'{remained_cash_in_currency} {currency_name}')
+
+        return (f'Денег нет, держись: '
+                f'твой долг - {remained_cash_in_currency} {currency_name}')
