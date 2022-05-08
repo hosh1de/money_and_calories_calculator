@@ -25,7 +25,7 @@ class Record:
         if isinstance(date, str):
             date_format = '%d.%m.%Y'
             date = dt.datetime.strptime(date, date_format).date()
-        
+
         self.date = date
 
 
@@ -37,7 +37,7 @@ class Calculator:
         Initialize the Calculator class
 
         Key arguments:
-        limit -- daily spending limit set by the user(required)
+        limit -- daily spending limit set by the user (required)
 
         Restrictions:
         1. the limit argument must be non-negative
@@ -51,7 +51,7 @@ class Calculator:
         Add an entry to the class list
 
         Key arguments:
-        record -- a record of spending money or calories(required)
+        record -- a record of spending money or calories (required)
 
         Restrictions:
         1. the record argument must be of the Record class
@@ -59,28 +59,37 @@ class Calculator:
 
         self.records.append(record)
 
+    def get_days_ago_stats(self, days):
+        """
+        Get the number of expenses for a certain number of days
+
+        Key arguments:
+        days -- The number of days you need to get statistics (required)
+
+        Restrictions:
+        1. the days argument must be non-negative
+        """
+
+        today = dt.datetime.now().date()
+        delta = dt.timedelta(days=days)
+        days_ago = today - delta
+
+        days_count = sum(rec.amount for rec in self.records 
+                         if days_ago <= rec.date <= today)
+
+        return days_count
+
     def get_today_stats(self):
         """Get the sum of all expenses for today"""
 
-        today = dt.datetime.now().date()
-        today_count = 0
-
-        for rec in self.records:
-            if rec.date == today:
-                today_count += rec.amount
+        today_count = self.get_days_ago_stats(0)
         return today_count
 
     def get_week_stats(self):
         """Get the amount of expenses for the last 7 days"""
 
-        today = dt.datetime.now().date()
-        week_count = 0
-        delta = dt.timedelta(days=7)
-        week_ago = today - delta
-
-        for rec in self.records:
-            if week_ago <= rec.date <= today:
-                week_count += rec.amount
+        week_count = self.get_days_ago_stats(7)
+                         
         return week_count
 
 
@@ -127,10 +136,6 @@ class CashCalculator(Calculator):
 
         Restrictions:
         1. the currency argument must be equal to 'rub', 'usd' or 'eur'
-
-        Exceptions:
-        If the currency argument is not passed or an unexpected value 
-        is passed, the program will break
         """
 
         today_count = self.get_today_stats()
